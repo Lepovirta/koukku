@@ -35,33 +35,36 @@ impl Conf {
     }
 
     pub fn from_file(path: &str) -> Result<Conf, ConfError> {
-        Ini::load_from_file(path).map_err(ConfError::Ini)
+        Ini::load_from_file(path)
+            .map_err(ConfError::Ini)
             .and_then(|ini| Conf::from_ini(&ini).map_err(ConfError::from_str))
     }
 }
 
 fn ini_to_projects(ini: &Ini) -> Result<HashMap<String, Project>, &str> {
     ini.iter()
-        .filter_map(|pair| {
-            let (key, vs) = pair;
-            key.as_ref().map(|k| (k, vs))
-        })
-        .map(|pair| {
-            let (key, vs) = pair;
-            Project::from_map(key, vs)
-        })
-        .collect::<Result<Vec<_>, &str>>()
-        .map(|projects| {
-            projects.into_iter()
-                .map(|p| (p.repo.to_owned(), p))
-                .collect::<HashMap<_, _>>()
-        })
+       .filter_map(|pair| {
+           let (key, vs) = pair;
+           key.as_ref().map(|k| (k, vs))
+       })
+       .map(|pair| {
+           let (key, vs) = pair;
+           Project::from_map(key, vs)
+       })
+       .collect::<Result<Vec<_>, &str>>()
+       .map(|projects| {
+           projects.into_iter()
+                   .map(|p| (p.repo.to_owned(), p))
+                   .collect::<HashMap<_, _>>()
+       })
 }
 
 impl fmt::Display for Conf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut res = write!(f, "Conf(location = {}, gitpath = {}, projects = [",
-                             self.location, self.gitpath);
+        let mut res = write!(f,
+                             "Conf(location = {}, gitpath = {}, projects = [",
+                             self.location,
+                             self.gitpath);
         for (_, v) in self.projects.iter() {
             if res.is_ok() {
                 res = write!(f, "{}, ", v);
@@ -96,8 +99,11 @@ impl Project {
 
 impl fmt::Display for Project {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Project(id = {}, repo = {}, branch = {}, command = {})",
-            self.id, self.repo, self.branch, self.command)
+        write!(f,
+               "Project(id = {}, repo = {}, branch = {}, command = {})",
+               self.id,
+               self.repo,
+               self.branch,
+               self.command)
     }
 }
-
