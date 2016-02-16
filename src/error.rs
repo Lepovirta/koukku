@@ -81,7 +81,7 @@ impl From<String> for Error {
     }
 }
 
-impl <'a> From<&'a str> for Error {
+impl<'a> From<&'a str> for Error {
     fn from(s: &'a str) -> Error {
         Generic(s.to_owned())
     }

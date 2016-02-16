@@ -29,29 +29,29 @@ macro_rules! try_log(
 
 fn main() {
     let matches = App::new("hubikoukku")
-        .version("0.1")
-        .author("jkpl")
-        .about("Github Webhook server")
-        .arg(Arg::with_name("config")
-             .short("c")
-             .long("config")
-             .value_name("FILE")
-             .help("Configuration file location")
-             .takes_value(true)
-             .required(true))
-        .arg(Arg::with_name("server")
-             .short("s")
-             .long("server")
-             .value_name("HOST:PORT")
-             .help("The address and port to run the server on")
-             .takes_value(true)
-             .required(true))
-        .get_matches();
+                      .version("0.1")
+                      .author("jkpl")
+                      .about("Github Webhook server")
+                      .arg(Arg::with_name("config")
+                               .short("c")
+                               .long("config")
+                               .value_name("FILE")
+                               .help("Configuration file location")
+                               .takes_value(true)
+                               .required(true))
+                      .arg(Arg::with_name("server")
+                               .short("s")
+                               .long("server")
+                               .value_name("HOST:PORT")
+                               .help("The address and port to run the server on")
+                               .takes_value(true)
+                               .required(true))
+                      .get_matches();
 
     let config = try_log!(matches.value_of("config")
-                          .ok_or("No config location specified"));
+                                 .ok_or("No config location specified"));
     let server = try_log!(matches.value_of("server")
-                          .ok_or("No server address specified"));
+                                 .ok_or("No server address specified"));
 
     start(&config, &server);
 }
@@ -62,4 +62,3 @@ fn start(config: &str, server: &str) {
     info!("Starting hubikoukku server");
     let _ = try_log!(server::start(server));
 }
-
