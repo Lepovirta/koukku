@@ -13,6 +13,19 @@ mod server;
 mod conf;
 
 use clap::{Arg, App};
+use std::io::{self, Write};
+
+macro_rules! try_log(
+    ($e:expr) => {{
+        match $e {
+            Ok(v) => v,
+            Err(e) => {
+                let _ = writeln!(&mut io::stderr(), "Error: {}", e);
+                return;
+            }
+        }
+    }}
+);
 
 fn main() {
     let matches = App::new("hubikoukku")
@@ -35,15 +48,18 @@ fn main() {
              .required(true))
         .get_matches();
 
-    let config = matches.value_of("config").unwrap();
-    let server = matches.value_of("server").unwrap();
+    let config = try_log!(matches.value_of("config")
+                          .ok_or("No config location specified"));
+    let server = try_log!(matches.value_of("server")
+                          .ok_or("No server address specified"));
+
     start(&config, &server);
 }
 
 fn start(config: &str, server: &str) {
-    let _ = env_logger::init().unwrap();
-    let s = conf::Conf::from_file(config).unwrap();
-    println!("{}", &s);
+    let _ = try_log!(env_logger::init());
+    let s = try_log!(conf::Conf::from_file(config));
     info!("Starting hubikoukku server");
-    let _ = server::start(server).unwrap();
+    let _ = try_log!(server::start(server));
 }
+

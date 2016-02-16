@@ -1,19 +1,8 @@
 use std::collections::HashMap;
 use std::fmt;
 use ini::Ini;
-use ini::ini::Error as IniError;
 
-#[derive(Debug)]
-pub enum ConfError {
-    Ini(IniError),
-    Parse(String),
-}
-
-impl ConfError {
-    fn from_str(s: &str) -> ConfError {
-        ConfError::Parse(s.to_owned())
-    }
-}
+use error::Error;
 
 pub struct Conf {
     location: String,
@@ -34,10 +23,10 @@ impl Conf {
         })
     }
 
-    pub fn from_file(path: &str) -> Result<Conf, ConfError> {
+    pub fn from_file(path: &str) -> Result<Conf, Error> {
         Ini::load_from_file(path)
-            .map_err(ConfError::Ini)
-            .and_then(|ini| Conf::from_ini(&ini).map_err(ConfError::from_str))
+            .map_err(Error::from)
+            .and_then(|ini| Conf::from_ini(&ini).map_err(Error::from))
     }
 }
 
