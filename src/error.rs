@@ -4,8 +4,9 @@ use std::str::Utf8Error;
 use hyper::header::Header;
 use hyper::error::Error as HyperError;
 use ini::ini::Error as IniError;
+use rustc_serialize::hex::FromHexError;
 
-use self::Error::{Hyper, Generic, Utf8, Io, Ini};
+use self::Error::{Hyper, Generic, Utf8, Io, Ini, Hex};
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -16,6 +17,7 @@ pub enum Error {
     Generic(String),
     Utf8(Utf8Error),
     Io(io::Error),
+    Hex(FromHexError),
 }
 
 impl Error {
@@ -32,6 +34,7 @@ impl StdError for Error {
             Hyper(ref err) => err.description(),
             Utf8(ref err) => err.description(),
             Io(ref err) => err.description(),
+            Hex(ref err) => err.description(),
         }
     }
 
@@ -72,6 +75,12 @@ impl From<Utf8Error> for Error {
 impl From<IniError> for Error {
     fn from(err: IniError) -> Error {
         Ini(format!("{}", err))
+    }
+}
+
+impl From<FromHexError> for Error {
+    fn from(err: FromHexError) -> Error {
+        Hex(err)
     }
 }
 

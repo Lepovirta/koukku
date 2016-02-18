@@ -1,3 +1,4 @@
+extern crate rustc_serialize;
 extern crate ini;
 extern crate crypto;
 #[macro_use]
@@ -11,6 +12,7 @@ mod error;
 mod header;
 mod server;
 mod conf;
+mod verify;
 
 use clap::{Arg, App};
 use std::io::{self, Write};
