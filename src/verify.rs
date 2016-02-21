@@ -1,31 +1,30 @@
 use std::collections::HashMap;
-use crypto::digest::Digest;
-use crypto::mac::{Mac, MacResult};
-use crypto::hmac::Hmac;
-use crypto::sha1::Sha1;
+use openssl::crypto::hash::Type;
+use openssl::crypto::hmac::hmac;
 
 use error::{Result, Error};
 
 pub fn verify(digest_name: &str, key: &[u8], hash: &[u8], content: &[u8]) -> Result<()> {
-    let mut hmac = match digest_name {
-        "sha1" => Hmac::new(Sha1::new(), key),
-        _ => return Err(no_such_digest(digest_name)),
-    };
-    verify_hmac(&mut hmac, hash, content)
+    let digest = try!(str_to_digest(digest_name));
+    let result = hmac(digest, key, content);
+    if result == hash { // TODO: use constant time comparison to avoid timing attacks
+        Ok(())
+    } else {
+        Err(Error::from("Verification failed"))
+    }
 }
 
-fn verify_hmac<D: Digest>(hmac: &mut Hmac<D>, hash: &[u8], content: &[u8]) -> Result<()> {
-    hmac.input(content);
-    let result = hmac.result();
-    match MacResult::new(hash) == result {
-        true => Ok(()),
-        false => Err(Error::from("Verification failed")),
+fn str_to_digest(digest_name: &str) -> Result<Type> {
+    match digest_name {
+        "sha1" => Ok(Type::SHA1),
+        _ => Err(no_such_digest(digest_name)),
     }
 }
 
 fn no_such_digest(digest: &str) -> Error {
     Error::from(format!("No such digest {}", digest))
 }
+
 
 #[cfg(test)]
 mod test {

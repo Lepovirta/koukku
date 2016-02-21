@@ -1,6 +1,6 @@
 extern crate rustc_serialize;
 extern crate ini;
-extern crate crypto;
+extern crate openssl;
 #[macro_use]
 extern crate hyper;
 #[macro_use]
