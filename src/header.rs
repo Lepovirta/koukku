@@ -1,7 +1,8 @@
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::str;
 use hyper::header::{Header, Headers, HeaderFormat};
 use hyper::error::{Result as HyperResult, Error as HyperError};
+use openssl::crypto::hash::Type;
 
 use error::Error;
 
@@ -39,10 +40,10 @@ impl HeaderFormat for GithubEvent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HubSignature {
-    pub digest: String,
-    pub key: String,
+    pub digest: Type,
+    pub hash: String,
 }
 
 impl Header for HubSignature {
@@ -62,29 +63,55 @@ impl Header for HubSignature {
             return Err(HyperError::Header);
         }
 
+        let digest = try!(str_to_digest(parts[0]));
+
         Ok(HubSignature {
-            digest: parts[0].to_owned(),
-            key: parts[1].to_owned(),
+            digest: digest,
+            hash: parts[1].to_owned(),
         })
+    }
+}
+
+fn str_to_digest(digest_name: &str) -> HyperResult<Type> {
+    match digest_name {
+        "sha1" => Ok(Type::SHA1),
+        _ => Err(HyperError::Header),
+    }
+}
+
+impl Debug for HubSignature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(format_digest(f, &self.digest));
+        try!(f.write_str("="));
+        f.write_str(&self.hash)
     }
 }
 
 impl HeaderFormat for HubSignature {
     fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.write_str(&self.digest));
-        try!(f.write_str("="));
-        f.write_str(&self.key)
+        self.fmt(f)
     }
 }
 
-pub fn get_event(headers: &Headers) -> Result<&GithubEvent, Error> {
-    get_header::<GithubEvent>(headers)
+fn format_digest(f: &mut fmt::Formatter, digest: &Type) -> fmt::Result {
+    match *digest {
+        Type::SHA1 => f.write_str("sha1"),
+        _ => Err(fmt::Error),
+    }
 }
 
-pub fn get_signature(headers: &Headers) -> Result<&HubSignature, Error> {
-    get_header::<HubSignature>(headers)
+pub fn get_event(headers: &Headers) -> Result<GithubEvent, Error> {
+    get_header::<GithubEvent>(headers).map(|h| h.to_owned())
+}
+
+pub fn get_signature(headers: &Headers) -> Result<HubSignature, Error> {
+    get_header::<HubSignature>(headers).map(|h| h.to_owned())
 }
 
 fn get_header<H: Header + HeaderFormat>(headers: &Headers) -> Result<&H, Error> {
-    headers.get::<H>().ok_or(Error::missing_header::<H>())
+    headers.get::<H>().ok_or(missing_header::<H>())
+}
+
+fn missing_header<H: Header>() -> Error {
+    Error::Generic("Missing header ".to_string() + H::header_name())
 }

@@ -7,14 +7,18 @@ extern crate hyper;
 extern crate log;
 extern crate env_logger;
 extern crate clap;
+extern crate serde_json;
 
 mod error;
 mod header;
 mod server;
 mod conf;
-mod verify;
+mod payload;
 
 use clap::{Arg, App};
+use std::thread;
+use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::io::{self, Write};
 
 macro_rules! try_log(
@@ -60,7 +64,20 @@ fn main() {
 
 fn start(config: &str, server: &str) {
     let _ = try_log!(env_logger::init());
-    let s = try_log!(conf::Conf::from_file(config));
+    let conf = try_log!(conf::Conf::from_file(config));
+    let shared_conf = Arc::new(conf);
+    let (tx, rx) = channel();
+
     info!("Starting hubikoukku server");
-    let _ = try_log!(server::start(server));
+
+    thread::spawn(move || {
+        loop {
+            match rx.recv() {
+                Ok(msg) => println!("Received message: {}", msg),
+                Err(err) => println!("Received error: {}", err),
+            }
+        }
+    });
+
+    let _ = try_log!(server::start(server, shared_conf.clone(), tx));
 }

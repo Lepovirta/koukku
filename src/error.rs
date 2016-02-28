@@ -1,12 +1,12 @@
 use std::{fmt, result, io};
 use std::error::Error as StdError;
 use std::str::Utf8Error;
-use hyper::header::Header;
 use hyper::error::Error as HyperError;
 use ini::ini::Error as IniError;
 use rustc_serialize::hex::FromHexError;
+use serde_json::error::Error as JsonError;
 
-use self::Error::{Hyper, Generic, Utf8, Io, Ini, Hex};
+use self::Error::{Hyper, Generic, Utf8, Io, Ini, Hex, Json};
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -18,12 +18,7 @@ pub enum Error {
     Utf8(Utf8Error),
     Io(io::Error),
     Hex(FromHexError),
-}
-
-impl Error {
-    pub fn missing_header<H: Header>() -> Error {
-        Generic("Missing header ".to_string() + H::header_name())
-    }
+    Json(JsonError),
 }
 
 impl StdError for Error {
@@ -35,6 +30,7 @@ impl StdError for Error {
             Utf8(ref err) => err.description(),
             Io(ref err) => err.description(),
             Hex(ref err) => err.description(),
+            Json(ref err) => err.description(),
         }
     }
 
@@ -43,6 +39,7 @@ impl StdError for Error {
             Hyper(ref err) => Some(err),
             Utf8(ref err) => Some(err),
             Io(ref err) => Some(err),
+            Json(ref err) => Some(err),
             _ => None,
         }
     }
@@ -81,6 +78,12 @@ impl From<IniError> for Error {
 impl From<FromHexError> for Error {
     fn from(err: FromHexError) -> Error {
         Hex(err)
+    }
+}
+
+impl From<JsonError> for Error {
+    fn from(err: JsonError) -> Error {
+        Json(err)
     }
 }
 

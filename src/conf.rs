@@ -5,9 +5,9 @@ use ini::Ini;
 use error::Error;
 
 pub struct Conf {
-    location: String,
-    gitpath: String,
-    projects: HashMap<String, Project>,
+    pub location: String,
+    pub gitpath: String,
+    pub projects: HashMap<String, Project>,
 }
 
 impl Conf {
@@ -27,6 +27,10 @@ impl Conf {
         Ini::load_from_file(path)
             .map_err(Error::from)
             .and_then(|ini| Conf::from_ini(&ini).map_err(Error::from))
+    }
+
+    pub fn get_project(&self, repo: &str) -> Option<&Project> {
+        self.projects.get(repo)
     }
 }
 
@@ -66,10 +70,11 @@ impl fmt::Display for Conf {
 }
 
 pub struct Project {
-    id: String,
-    repo: String,
-    branch: String,
-    command: String,
+    pub id: String,
+    pub repo: String,
+    pub branch: String,
+    pub command: String,
+    pub key: String,
 }
 
 impl Project {
@@ -77,11 +82,13 @@ impl Project {
         let repo = try!(props.get("repo").ok_or("No repo found"));
         let branch = try!(props.get("branch").ok_or("No branch found"));
         let command = try!(props.get("command").ok_or("No command found"));
+        let key = try!(props.get("key").ok_or("No key found"));
         Ok(Project {
             id: id.to_owned(),
             repo: repo.to_owned(),
             branch: branch.to_owned(),
             command: command.to_owned(),
+            key: key.to_owned(),
         })
     }
 }
