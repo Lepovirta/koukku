@@ -8,13 +8,13 @@ use hyper::Server;
 use hyper::server::{Request, Response, Listening, Handler};
 use hyper::error::Result as HyperResult;
 use openssl::crypto::hmac::hmac;
+use rustc_serialize::hex::ToHex;
 
 use payload;
 use conf::Conf;
 use error::{Error, Result};
 use header;
 use header::{GithubEvent, HubSignature};
-
 
 struct WebhookHandler {
     conf: Arc<Conf>,
@@ -85,12 +85,16 @@ fn read_bytes(read: &mut Read) -> Result<Vec<u8>> {
 
 fn verify(signature: &HubSignature, key: &[u8], content: &[u8]) -> Result<()> {
     let result = hmac(signature.digest, key, content);
-    let hash: &[u8] = signature.hash.as_ref();
-    if result == hash {
+    let expected_hash: &[u8] = &signature.hash;
+
+    if result == expected_hash {
         // TODO: use constant time comparison to avoid timing attacks
         Ok(())
     } else {
-        Err(Error::from("Verification failed"))
+        let msg = format!("Verification failed. Received expected hash {}, but received {}",
+                          result.to_hex(),
+                          expected_hash.to_hex());
+        Err(Error::from(msg))
     }
 }
 
@@ -108,7 +112,7 @@ impl Handler for WebhookHandler {
 }
 
 fn log_error(err: &Error, remote_addr: &SocketAddr, uri: &RequestUri) {
-    info!("Failed request from {} to {}: {}", remote_addr, uri, err)
+    error!("Failed request from {} to {}: {}", remote_addr, uri, err)
 }
 
 fn log_result<T>(res: &Result<T>, remote_addr: &SocketAddr, uri: &RequestUri) {

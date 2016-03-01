@@ -3,6 +3,7 @@ use std::str;
 use hyper::header::{Header, Headers, HeaderFormat};
 use hyper::error::{Result as HyperResult, Error as HyperError};
 use openssl::crypto::hash::Type;
+use rustc_serialize::hex::{FromHex, ToHex};
 
 use error::Error;
 
@@ -43,7 +44,7 @@ impl HeaderFormat for GithubEvent {
 #[derive(Clone)]
 pub struct HubSignature {
     pub digest: Type,
-    pub hash: String,
+    pub hash: Vec<u8>,
 }
 
 impl Header for HubSignature {
@@ -65,9 +66,11 @@ impl Header for HubSignature {
 
         let digest = try!(str_to_digest(parts[0]));
 
+        let hash = try!(parts[1].from_hex().map_err(|_| HyperError::Header));
+
         Ok(HubSignature {
             digest: digest,
-            hash: parts[1].to_owned(),
+            hash: hash,
         })
     }
 }
@@ -83,7 +86,7 @@ impl Debug for HubSignature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(format_digest(f, &self.digest));
         try!(f.write_str("="));
-        f.write_str(&self.hash)
+        f.write_str(&self.hash.to_hex())
     }
 }
 
