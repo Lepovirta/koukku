@@ -43,8 +43,7 @@ impl WebhookHandler {
         let repo = try!(payload::get_repo_name(&json));
 
         // Conf
-        let conf = self.conf.clone();
-        let key = try!(get_key(&conf, repo));
+        let key = try!(get_key(&self.conf, repo));
 
         // Verify
         let _ = try!(verify(&signature, key, &bytes));

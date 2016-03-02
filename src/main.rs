@@ -14,6 +14,7 @@ mod header;
 mod server;
 mod conf;
 mod payload;
+mod exec;
 
 use clap::{Arg, App};
 use std::thread;
@@ -68,16 +69,11 @@ fn start(config: &str, server: &str) {
     let shared_conf = Arc::new(conf);
     let (tx, rx) = channel();
 
-    info!("Starting hubikoukku server");
+    let executor = exec::Executor::new(shared_conf.clone(), rx);
 
-    thread::spawn(move || {
-        loop {
-            match rx.recv() {
-                Ok(msg) => println!("Received message: {}", msg),
-                Err(err) => println!("Received error: {}", err),
-            }
-        }
-    });
+    info!("Starting koukku server");
+
+    thread::spawn(move || executor.start());
 
     let _ = try_log!(server::start(server, shared_conf.clone(), tx));
 }
