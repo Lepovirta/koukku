@@ -53,7 +53,7 @@ impl WebhookHandler {
         info!("Triggered hook for repo: {}", repo);
 
         // Write response
-        let _ = try!(res.send(b"Hook triggered").map_err(Error::from));
+        let _ = try!(res.send(b"Hook triggered"));
 
         Ok(())
     }
@@ -78,7 +78,7 @@ fn get_key<'a>(conf: &'a Conf, repo: &str) -> Result<&'a [u8]> {
 
 fn read_bytes(read: &mut Read) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
-    let _ = try!(read.read_to_end(&mut buffer).map_err(Error::from));
+    let _ = try!(read.read_to_end(&mut buffer));
     Ok(buffer)
 }
 

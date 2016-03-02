@@ -11,7 +11,7 @@ pub fn get_repo_name(json: &JsonValue) -> Result<&str> {
 }
 
 pub fn bytes_to_json(bytes: &[u8]) -> Result<JsonValue> {
-    let s = try!(str::from_utf8(bytes).map_err(Error::from));
+    let s = try!(str::from_utf8(bytes));
     str_to_json(s)
 }
 
