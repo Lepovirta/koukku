@@ -29,11 +29,11 @@ impl WebhookHandler {
         }
     }
 
-    fn ping(&self, res: Response) -> Result<()> {
-        res.send(b"Pong").map_err(Error::from)
+    fn ping(&self) -> Result<String> {
+        Ok("Pong".to_owned())
     }
 
-    fn push(&self, mut req: Request, res: Response) -> Result<()> {
+    fn push(&self, mut req: Request) -> Result<String> {
         // Headers
         let signature = try!(header::get_signature(&req.headers));
 
@@ -52,16 +52,7 @@ impl WebhookHandler {
         let _ = try!(self.trigger_hook(repo));
         info!("Triggered hook for repo: {}", repo);
 
-        // Write response
-        let _ = try!(res.send(b"Hook triggered"));
-
-        Ok(())
-    }
-
-    fn error(&self, err: &Error, req: &Request, mut res: Response) -> Result<()> {
-        log_error(err, &req.remote_addr, &req.uri);
-        *res.status_mut() = hyper::BadRequest;
-        res.send(b"Invalid request").map_err(Error::from)
+        Ok("Hook triggered".to_owned())
     }
 
     fn trigger_hook(&self, repo: &str) -> Result<()> {
@@ -101,24 +92,39 @@ impl Handler for WebhookHandler {
     fn handle(&self, req: Request, res: Response) {
         let remote_addr = &req.remote_addr.to_owned();
         let uri = &req.uri.to_owned();
-        let res = match header::get_event(&req.headers) {
-            Ok(GithubEvent::Ping) => self.ping(res),
-            Ok(GithubEvent::Push) => self.push(req, res),
-            Err(err) => self.error(&err, &req, res),
+        let result = match header::get_event(&req.headers) {
+            Ok(GithubEvent::Ping) => self.ping(),
+            Ok(GithubEvent::Push) => self.push(req),
+            Err(err) => Err(err),
         };
-        log_result(&res, remote_addr, uri);
+        handle_result(result, res, remote_addr, uri);
+    }
+}
+
+fn handle_result(result: Result<String>,
+                 response: Response,
+                 remote_addr: &SocketAddr, uri: &RequestUri) {
+    match result {
+        Ok(contents) => send_bytes(response, &contents.into_bytes()),
+        Err(err) => handle_error(err, response, remote_addr, uri),
+    }
+}
+
+fn handle_error(err: Error, mut response: Response,
+                remote_addr: &SocketAddr, uri: &RequestUri) {
+    log_error(&err, remote_addr, uri);
+    *response.status_mut() = hyper::BadRequest;
+    send_bytes(response, b"Invalid response")
+}
+
+fn send_bytes(response: Response, bs: &[u8]) {
+    if let Err(err) = response.send(bs) {
+        error!("Failed to write response: {}", err);
     }
 }
 
 fn log_error(err: &Error, remote_addr: &SocketAddr, uri: &RequestUri) {
     error!("Failed request from {} to {}: {}", remote_addr, uri, err)
-}
-
-fn log_result<T>(res: &Result<T>, remote_addr: &SocketAddr, uri: &RequestUri) {
-    match *res {
-        Ok(_) => (),
-        Err(ref err) => log_error(err, remote_addr, uri),
-    }
 }
 
 pub fn start(address: &str, conf: Arc<Conf>, send: Sender<String>) -> HyperResult<Listening> {
