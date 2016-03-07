@@ -8,6 +8,7 @@ use hyper::Server;
 use hyper::server::{Request, Response, Listening, Handler};
 use hyper::error::Result as HyperResult;
 use openssl::crypto::hmac::hmac;
+use openssl::crypto::memcmp;
 use rustc_serialize::hex::ToHex;
 
 use payload;
@@ -77,8 +78,7 @@ fn verify(signature: &HubSignature, key: &[u8], content: &[u8]) -> Result<()> {
     let result = hmac(signature.digest, key, content);
     let expected_hash: &[u8] = &signature.hash;
 
-    if result == expected_hash {
-        // TODO: use constant time comparison to avoid timing attacks
+    if memcmp::eq(&result, &expected_hash) {
         Ok(())
     } else {
         let msg = format!("Verification failed. Received expected hash {}, but received {}",
@@ -103,15 +103,15 @@ impl Handler for WebhookHandler {
 
 fn handle_result(result: Result<String>,
                  response: Response,
-                 remote_addr: &SocketAddr, uri: &RequestUri) {
+                 remote_addr: &SocketAddr,
+                 uri: &RequestUri) {
     match result {
         Ok(contents) => send_bytes(response, &contents.into_bytes()),
         Err(err) => handle_error(err, response, remote_addr, uri),
     }
 }
 
-fn handle_error(err: Error, mut response: Response,
-                remote_addr: &SocketAddr, uri: &RequestUri) {
+fn handle_error(err: Error, mut response: Response, remote_addr: &SocketAddr, uri: &RequestUri) {
     log_error(&err, remote_addr, uri);
     *response.status_mut() = hyper::BadRequest;
     send_bytes(response, b"Invalid response")
