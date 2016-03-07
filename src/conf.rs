@@ -4,6 +4,9 @@ use ini::Ini;
 
 use error::Error;
 
+const DEFAULT_BRANCH: &'static str = "master";
+const DEFAULT_GIT_PATH: &'static str = "/usr/bin/git";
+
 pub struct Conf {
     pub location: String,
     pub gitpath: String,
@@ -12,9 +15,10 @@ pub struct Conf {
 
 impl Conf {
     pub fn from_ini(ini: &Ini) -> Result<Conf, &str> {
+        let default_gitpath = DEFAULT_GIT_PATH.to_owned();
         let s = try!(ini.section(None::<String>).ok_or("No general section found"));
         let location = try!(s.get("location").ok_or("No location found"));
-        let gitpath = try!(s.get("gitpath").ok_or("No gitpath found"));
+        let gitpath = s.get("gitpath").unwrap_or(&default_gitpath);
         let projects = try!(ini_to_projects(ini));
         Ok(Conf {
             location: location.to_owned(),
@@ -79,8 +83,9 @@ pub struct Project {
 
 impl Project {
     fn from_map(id: &str, props: &HashMap<String, String>) -> Result<Project, &'static str> {
+        let default_branch = DEFAULT_BRANCH.to_owned();
         let repo = try!(props.get("repo").ok_or("No repo found"));
-        let branch = try!(props.get("branch").ok_or("No branch found"));
+        let branch = props.get("branch").unwrap_or(&default_branch);
         let command = try!(props.get("command").ok_or("No command found"));
         let key = try!(props.get("key").ok_or("No key found"));
         Ok(Project {
