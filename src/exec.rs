@@ -32,7 +32,7 @@ impl Executor {
 
     pub fn run(&self, repo: &str) {
         match self.update_repo(repo) {
-            Ok(_) => info!("Repository {} updated successfully", repo),
+            Ok(_) => (),
             Err(err) => error!("Failed to update repository {}: {}", repo, err),
         }
     }
@@ -58,7 +58,8 @@ fn update_project(location: &str, git: &str, project: &Project) -> Result<()> {
 
     if has_changed {
         let _ = try!(git_pull(git, path));
-        let _ = run_from_str(&project.command, path);
+        let _ = try!(run_from_str(&project.command, path));
+        info!("Repository {} updated successfully", &project.repo);
         Ok(())
     } else {
         info!("No changes in repository. Skipping update command.");

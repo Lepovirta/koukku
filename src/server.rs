@@ -91,9 +91,9 @@ impl Handler for WebhookHandler {
         let uri = &req.uri.to_owned();
         let result = match header::get_event(&req.headers) {
             Ok(GithubEvent::Ping) => self.ping(),
-            Ok(GithubEvent::Push) =>
-                header::get_signature(&req.headers)
-                    .and_then(|sig| self.push(&mut req, &sig)),
+            Ok(GithubEvent::Push) => {
+                header::get_signature(&req.headers).and_then(|sig| self.push(&mut req, &sig))
+            }
             Err(err) => Err(err),
         };
         handle_result(result, res, remote_addr, uri);
@@ -144,7 +144,8 @@ mod tests {
     use header::HubSignature;
 
     const PAYLOAD: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/koukku\" } }";
-    const INVALID_PAYLOAD: &'static str = "{ \"repository\": { \"something\": \"Lepovirta/koukku\" } }";
+    const INVALID_PAYLOAD: &'static str = "{ \"repository\": { \"something\": \
+                                           \"Lepovirta/koukku\" } }";
     const UNKNOWN_REPO: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/lepo\" } }";
     const HEX_SHA1: &'static str = "0229dcb0888d3a311386c349a1f4ca161f82f5dd";
     const INVALID_HEX_SHA1: &'static str = "364fc28fcf2f50fe5760e7e09e4c5efff04115d4";
@@ -167,7 +168,10 @@ mod tests {
 
     fn sha1sig(sha1str: &str) -> HubSignature {
         let sha1 = sha1str.from_hex().unwrap();
-        HubSignature { digest: Type::SHA1, hash: sha1 }
+        HubSignature {
+            digest: Type::SHA1,
+            hash: sha1,
+        }
     }
 
     fn valid_sig() -> HubSignature {
