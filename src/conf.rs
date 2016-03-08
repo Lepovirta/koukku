@@ -7,10 +7,13 @@ use error::Error;
 const DEFAULT_BRANCH: &'static str = "master";
 const DEFAULT_GIT_PATH: &'static str = "/usr/bin/git";
 
+pub type Projects = HashMap<String, Project>;
+
+#[derive(Clone)]
 pub struct Conf {
     pub location: String,
     pub gitpath: String,
-    pub projects: HashMap<String, Project>,
+    pub projects: Projects,
 }
 
 impl Conf {
@@ -38,7 +41,7 @@ impl Conf {
     }
 }
 
-fn ini_to_projects(ini: &Ini) -> Result<HashMap<String, Project>, &str> {
+fn ini_to_projects(ini: &Ini) -> Result<Projects, &str> {
     ini.iter()
        .filter_map(|pair| {
            let (key, vs) = pair;
@@ -73,6 +76,7 @@ impl fmt::Display for Conf {
     }
 }
 
+#[derive(Clone)]
 pub struct Project {
     pub id: String,
     pub repo: String,

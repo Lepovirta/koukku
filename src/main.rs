@@ -18,7 +18,6 @@ mod exec;
 
 use clap::{Arg, App};
 use std::thread;
-use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::io::{self, Write};
 
@@ -66,14 +65,14 @@ fn main() {
 fn start(config: &str, server: &str) {
     let _ = try_log!(env_logger::init());
     let conf = try_log!(conf::Conf::from_file(config));
-    let shared_conf = Arc::new(conf);
+    let projects = conf.projects.clone();
     let (tx, rx) = channel();
 
-    let executor = exec::Executor::new(shared_conf.clone(), rx);
+    let executor = exec::Executor::new(conf, rx);
 
     info!("Starting koukku server");
 
     thread::spawn(move || executor.start());
 
-    let _ = try_log!(server::start(server, shared_conf.clone(), tx));
+    let _ = try_log!(server::start(server, projects, tx));
 }
