@@ -1,29 +1,43 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use ini::Ini;
+use std::error::Error as StdError;
 
 use error::Error;
 
 const DEFAULT_BRANCH: &'static str = "master";
 const DEFAULT_GIT_PATH: &'static str = "/usr/bin/git";
+const DEFAULT_SERVER: &'static str = "localhost:8888";
 
 pub type Projects = HashMap<String, Project>;
 
 #[derive(Clone)]
 pub struct Conf {
+    pub server: String,
+    pub threads: Option<usize>,
     pub location: String,
     pub gitpath: String,
     pub projects: Projects,
 }
 
 impl Conf {
-    pub fn from_ini(ini: &Ini) -> Result<Conf, &str> {
+    pub fn from_ini(ini: &Ini) -> Result<Conf, String> {
+        let default_server = DEFAULT_SERVER.to_owned();
         let default_gitpath = DEFAULT_GIT_PATH.to_owned();
-        let s = try!(ini.section(None::<String>).ok_or("No general section found"));
-        let location = try!(s.get("location").ok_or("No location found"));
+
+        let s = try!(ini.section(None::<String>)
+                        .ok_or("No general section found".to_owned()));
+        let server = s.get("server").unwrap_or(&default_server);
+        let threads = try!(optional_from_str::<usize>(s.get("threads"))
+                               .map_err(|err| err.description().to_owned()));
+        let location = try!(s.get("location").ok_or("No location found".to_owned()));
         let gitpath = s.get("gitpath").unwrap_or(&default_gitpath);
-        let projects = try!(ini_to_projects(ini));
+        let projects = try!(ini_to_projects(ini).map_err(|err| err.to_owned()));
+
         Ok(Conf {
+            server: server.to_owned(),
+            threads: threads,
             location: location.to_owned(),
             gitpath: gitpath.to_owned(),
             projects: projects,
@@ -38,6 +52,13 @@ impl Conf {
 
     pub fn get_project(&self, repo: &str) -> Option<&Project> {
         self.projects.get(repo)
+    }
+}
+
+fn optional_from_str<F: FromStr>(opt_s: Option<&String>) -> Result<Option<F>, F::Err> {
+    match opt_s {
+        None => Ok(None),
+        Some(s) => s.parse::<F>().map(Some),
     }
 }
 

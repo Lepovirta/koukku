@@ -126,10 +126,17 @@ fn log_error(err: &Error, remote_addr: &SocketAddr, uri: &RequestUri) {
     error!("Failed request from {} to {}: {}", remote_addr, uri, err)
 }
 
-pub fn start(address: &str, projects: Projects, send: Sender<String>) -> HyperResult<Listening> {
+pub fn start(address: &str,
+             threads: Option<usize>,
+             projects: Projects,
+             send: Sender<String>)
+             -> HyperResult<Listening> {
     let server = try!(Server::http(address));
     let handler = WebhookHandler::new(projects, send);
-    server.handle(handler)
+    match threads {
+        None => server.handle(handler),
+        Some(t) => server.handle_threads(handler, t),
+    }
 }
 
 #[cfg(test)]

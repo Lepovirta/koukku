@@ -18,7 +18,7 @@ For example, this can be used for deploying the latest version of a website whic
 ## Usage
 
     USAGE:
-            koukku [FLAGS] --config <FILE> --server <HOST:PORT>
+            koukku [FLAGS] --config <FILE>
 
     FLAGS:
         -h, --help       Prints help information
@@ -26,7 +26,6 @@ For example, this can be used for deploying the latest version of a website whic
 
     OPTIONS:
         -c, --config <FILE>         Configuration file location
-        -s, --server <HOST:PORT>    The address and port to run the server on
 
 ## Configuration
 
@@ -36,6 +35,8 @@ Here's an example configuration:
 
     location = /path/to/projects
     gitpath = /usr/bin/git
+    server = 0.0.0.0:3000
+    threads = 2
 
     [myproject]
     repo = githubname/myrepo
@@ -54,10 +55,12 @@ Be sure to clone repositories manually to the `location` directory before using 
 
 ### Common configurations
 
-| Key      | Description                                    |
-| -------- | ---------------------------------------------- |
-| location | The directory where repositories are located   |
-| gitpath  | Path to `git` command. Default: `/usr/bin/git` |
+| Key      | Description                                            |
+| -------- | ------------------------------------------------------ |
+| server   | Server address to run on. Default: localhost:8888      |
+| threads  | Number of threads to run on. Default: adjusted by core |
+| location | The directory where repositories are located           |
+| gitpath  | Path to `git` command. Default: `/usr/bin/git`         |
 
 ### Project configurations
 
