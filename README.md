@@ -15,6 +15,12 @@ For example, koukku can be used for deploying the latest version of a website wh
 3. It updates the matching project's local repository with changes from remote repository.
 4. It runs user configured update script in the local repository directory.
 
+## Installation
+
+You can install koukku using [Rust's][rust] [Cargo][cargo]:
+
+    $ cargo install koukku
+
 ## Usage
 
     USAGE:
@@ -29,7 +35,7 @@ For example, koukku can be used for deploying the latest version of a website wh
 
 ## Configuration
 
-The configuration follows the [INI-format](https://en.wikipedia.org/wiki/INI_file).
+The configuration follows the [INI-format][ini].
 The top level keys contain common configurations, and the sections contain project specific configurations.
 Here's an example configuration:
 
@@ -71,13 +77,12 @@ For example, in the above configuration example the project would be found from
 
 ### Creating a webhook in GitHub
 
-See GitHub's [Creating Webhooks](https://developer.github.com/webhooks/creating/) guide.
+See GitHub's [Creating Webhooks][webhook-guide] guide.
 Currently, koukku only supports JSON payloads.
 
 ### Logging
 
-Koukku uses Rust's [log](https://doc.rust-lang.org/log/log/index.html) and
-[env_logger](https://doc.rust-lang.org/log/env_logger/index.html) for logging.
+Koukku uses Rust's [log][] and [env_logger][] for logging.
 Change the `RUST_LOG` environment to tune logging.
 Recommended setup:
 
@@ -103,14 +108,14 @@ Here's an example unit file for running koukku using systemd:
     WantedBy=default.target
 
 Change the paths, the user, and the group accordingly, and place the file to `/etc/systemd/system/koukku.service`.
-See to [systemd documentation](https://www.freedesktop.org/wiki/Software/systemd/) for more information.
+See to [systemd documentation][systemd] for more information.
 
 ## Dependencies
 
-For running `koukku`, you need to install [OpenSSL](https://www.openssl.org/) libraries.
-See [rust-openssl](https://github.com/sfackler/rust-openssl) and your operating system's guides for more information.
+For running `koukku`, you need to install [OpenSSL][] libraries.
+See [rust-openssl][] and your operating system's guides for more information.
 
-For building `koukku`, you need to install [Rust](https://www.rust-lang.org/) compiler and tools.
+For building `koukku`, you need to install [Rust][] compiler and tools.
 
 ## Building
 
@@ -132,7 +137,7 @@ Tests can be run using `cargo test`:
 
     $ cargo test
 
-See [Cargo guide](http://doc.crates.io/guide.html) for more information on using Cargo.
+See [Cargo guide][cargo-guide] for more information on using Cargo.
 
 ## License
 
@@ -145,3 +150,14 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[rust]: https://www.rust-lang.org/
+[cargo]: https://crates.io/
+[openssl]: https://www.openssl.org/
+[rust-openssl]: https://github.com/sfackler/rust-openssl
+[cargo-guide]: http://doc.crates.io/guide.html
+[ini]: https://en.wikipedia.org/wiki/INI_file
+[webhook-guide]: https://developer.github.com/webhooks/creating/
+[log]: https://doc.rust-lang.org/log/log/index.html
+[env_logger]: https://doc.rust-lang.org/log/env_logger/index.html
+[systemd]: https://www.freedesktop.org/wiki/Software/systemd/
