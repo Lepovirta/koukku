@@ -83,6 +83,28 @@ Recommended setup:
 
     RUST_LOG="error,koukku=info"
 
+## systemd
+
+Here's an example unit file for running koukku using systemd:
+
+    [Unit]
+    Description=Github Webhook service
+    After=network.target
+
+    [Service]
+    ExecStart=/path/to/koukku --config /path/to/conf.ini
+    WorkingDirectory=/path/to/workingdir
+    User=koukku
+    Group=koukku
+    PIDFile=/path/to/koukku.pid
+    Environment=RUST_LOG=error,koukku=info
+
+    [Install]
+    WantedBy=default.target
+
+Change the paths, the user, and the group accordingly, and place the file to `/etc/systemd/system/koukku.service`.
+See to [systemd documentation](https://www.freedesktop.org/wiki/Software/systemd/) for more information.
+
 ## Dependencies
 
 For running `koukku`, you need to install [OpenSSL](https://www.openssl.org/) libraries.
