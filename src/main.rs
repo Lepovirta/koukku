@@ -35,7 +35,7 @@ macro_rules! try_log(
 
 fn main() {
     let matches = App::new("koukku")
-                      .version("0.1")
+                      .version("0.1.0")
                       .author("jkpl")
                       .about("Github Webhook server")
                       .arg(Arg::with_name("config")
