@@ -52,12 +52,10 @@ impl Executor {
 fn update_project(location: &str, git: &str, project: &Project) -> Result<()> {
     let path_buf = Path::new(location).join(&project.id);
     let path = path_buf.as_path();
-    let _ = try!(git_checkout(git, path, &project.branch));
-    let _ = try!(git_remote_update(git, path));
-    let has_changed = try!(git_remote_changed(git, path));
+
+    let has_changed = try!(update_repo(git, &path, project));
 
     if has_changed {
-        let _ = try!(git_pull(git, path));
         let _ = try!(run_from_str(&project.command, path));
         info!("Repository {} updated successfully", &project.repo);
         Ok(())
@@ -65,6 +63,36 @@ fn update_project(location: &str, git: &str, project: &Project) -> Result<()> {
         info!("No changes in repository. Skipping update command.");
         Ok(())
     }
+}
+
+fn update_repo(git: &str, path: &Path, project: &Project) -> Result<bool> {
+    if path.exists() {
+        info!("Local repo exists: updating");
+        let _ = try!(git_checkout(git, path, &project.branch));
+        let _ = try!(git_remote_update(git, path));
+        let has_changed = try!(git_remote_changed(git, path));
+        let _ = try!(git_pull(git, path));
+        Ok(has_changed)
+    } else {
+        info!("No local repo found: cloning");
+        let _ = try!(git_clone(git, path, &project.repo));
+        let _ = try!(git_checkout(git, path, &project.branch));
+        Ok(true)
+    }
+}
+
+fn git_clone(git: &str, path: &Path, project: &str) -> BytesResult {
+    let path_s = try!(path.to_str().ok_or(Error::from("Invalid project path")));
+    info!("Cloning project {} to {}", project, path_s);
+    run(Command::new(git)
+            .arg("clone")
+            .arg(github_url(project))
+            .arg(path_s),
+        "git clone")
+}
+
+fn github_url(project: &str) -> String {
+    format!("https://github.com/{}.git", project)
 }
 
 fn git_checkout(git: &str, path: &Path, branch: &str) -> BytesResult {

@@ -3,17 +3,17 @@
 GitHub Webhook server.
 Listens for updates from GitHub for projects, and runs update scripts against the changes.
 
+## What can I use koukku for?
+
+The primary goal of this project is to provide a simple continuous integration/delivery platform for GitHub projects.
+For example, koukku can be used for deploying the latest version of a website which has source code hosted at GitHub.
+
 ## What exactly does it do?
 
-1. Listen for updates from GitHub
-2. Trigger an update for received events, if a match is found in configuration.
-3. Update the local repository with changes from remote repository.
-4. Run user configured update script in the local repository directory.
-
-## What can it be used for?
-
-The primary goal is to provide a simple continuous integration platform for GitHub projects.
-For example, this can be used for deploying the latest version of a website which has source code hosted at GitHub.
+1. Koukku listens for updates from GitHub by providing a webhook access.
+2. It triggers an update for a received event, if a match is found in configuration.
+3. It updates the matching project's local repository with changes from remote repository.
+4. It runs user configured update script in the local repository directory.
 
 ## Usage
 
@@ -51,34 +51,42 @@ The repositories in this directory are identified using the section ID.
 For example, in the above configuration example the project would be found from
 `/path/to/projects/myproject`.
 
-Be sure to clone repositories manually to the `location` directory before using this program.
-
 ### Common configurations
 
-| Key      | Description                                            |
-| -------- | ------------------------------------------------------ |
-| server   | Server address to run on. Default: localhost:8888      |
-| threads  | Number of threads to run on. Default: adjusted by core |
-| location | The directory where repositories are located           |
-| gitpath  | Path to `git` command. Default: `/usr/bin/git`         |
+| Key      | Description                                                            |
+| -------- | ---------------------------------------------------------------------- |
+| server   | Server address to run on. Default: localhost:8888                      |
+| threads  | Number of threads to run the web server on. Default: relative to cores |
+| location | The directory where repositories are located                           |
+| gitpath  | Path to `git` binary. Default: `/usr/bin/git`                          |
 
 ### Project configurations
 
-| Key      | Description                                     |
-| -------- | ----------------------------------------------- |
-| repo     | GitHub repository in format username/repository |
-| key      | Webhook secret key                              |
-| branch   | Git branch to track. Default: `master`          |
-| command  | The command to run on webhook trigger           |
+| Key      | Description                                       |
+| -------- | ------------------------------------------------- |
+| repo     | GitHub repository in format `username/repository` |
+| key      | Webhook secret key                                |
+| branch   | Git branch to track. Default: `master`            |
+| command  | The command to run on webhook trigger             |
 
 ### Creating a webhook in GitHub
 
 See GitHub's [Creating Webhooks](https://developer.github.com/webhooks/creating/) guide.
+Currently, koukku only supports JSON payloads.
+
+### Logging
+
+Koukku uses Rust's [log](https://doc.rust-lang.org/log/log/index.html) and
+[env_logger](https://doc.rust-lang.org/log/env_logger/index.html) for logging.
+Change the `RUST_LOG` environment to tune logging.
+Recommended setup:
+
+    RUST_LOG="error,koukku=info"
 
 ## Dependencies
 
 For running `koukku`, you need to install [OpenSSL](https://www.openssl.org/) libraries.
-See [rust-openssl](https://github.com/sfackler/rust-openssl) and your operating systems guides for more information.
+See [rust-openssl](https://github.com/sfackler/rust-openssl) and your operating system's guides for more information.
 
 For building `koukku`, you need to install [Rust](https://www.rust-lang.org/) compiler and tools.
 
