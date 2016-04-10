@@ -5,7 +5,7 @@ use hyper::error::{Result as HyperResult, Error as HyperError};
 use openssl::crypto::hash::Type;
 use rustc_serialize::hex::{FromHex, ToHex};
 
-use error::Error;
+use error::{Error, Reason};
 
 // We only care about pings and pushes
 #[derive(Debug, Clone, Copy)]
@@ -116,5 +116,6 @@ fn get_header<H: Header + HeaderFormat>(headers: &Headers) -> Result<&H, Error> 
 }
 
 fn missing_header<H: Header>() -> Error {
-    Error::Generic("Missing header ".to_string() + H::header_name())
+    Error::App(Reason::MissingHeader,
+               "Missing header ".to_string() + H::header_name())
 }

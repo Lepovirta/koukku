@@ -4,7 +4,7 @@ use std::str::FromStr;
 use ini::Ini;
 use std::error::Error as StdError;
 
-use error::Error;
+use error::{Reason, Error};
 
 const DEFAULT_BRANCH: &'static str = "master";
 const DEFAULT_GIT_PATH: &'static str = "/usr/bin/git";
@@ -45,9 +45,8 @@ impl Conf {
     }
 
     pub fn from_file(path: &str) -> Result<Conf, Error> {
-        Ini::load_from_file(path)
-            .map_err(Error::from)
-            .and_then(|ini| Conf::from_ini(&ini).map_err(Error::from))
+        let ini = try!(Ini::load_from_file(path));
+        Conf::from_ini(&ini).map_err(|err| Error::app(Reason::InvalidConf, err))
     }
 
     pub fn get_project(&self, repo: &str) -> Option<&Project> {

@@ -4,7 +4,7 @@ use std::process::{Command, Stdio, Output};
 use std::sync::mpsc::Receiver;
 
 use conf::{Conf, Project};
-use error::{Result, Error};
+use error::{Reason, Result, Error};
 
 type BytesResult = Result<Vec<u8>>;
 
@@ -45,7 +45,7 @@ impl Executor {
     fn get_project(&self, repo: &str) -> Result<&Project> {
         self.conf
             .get_project(repo)
-            .ok_or(Error::from("No repository found"))
+            .ok_or(Error::app(Reason::InvalidRepository, "No repository found"))
     }
 }
 
@@ -82,7 +82,7 @@ fn update_repo(git: &str, path: &Path, project: &Project) -> Result<bool> {
 }
 
 fn git_clone(git: &str, path: &Path, project: &str) -> BytesResult {
-    let path_s = try!(path.to_str().ok_or(Error::from("Invalid project path")));
+    let path_s = try!(path.to_str().ok_or(Error::app(Reason::InvalidPath, "Invalid project path")));
     info!("Cloning project {} to {}", project, path_s);
     run(Command::new(git)
             .arg("clone")
@@ -162,5 +162,5 @@ fn output_to_error(cmd: &str, out: Output) -> Error {
                       cmd,
                       out.status,
                       text);
-    Error::from(msg)
+    Error::app(Reason::CommandFailed, msg)
 }

@@ -1,31 +1,56 @@
 use std::{fmt, result, io};
 use std::error::Error as StdError;
 use std::str::Utf8Error;
+use std::sync::mpsc::{SendError, RecvError};
+use std::sync::PoisonError;
 use hyper::error::Error as HyperError;
 use ini::ini::Error as IniError;
 use rustc_serialize::hex::FromHexError;
 use serde_json::error::Error as JsonError;
 
-use self::Error::{Hyper, Generic, Utf8, Io, Ini, Hex, Json};
+use self::Error::{Hyper, App, Utf8, Io, Ini, Hex, Json, Mutex, Channel};
 
 pub type Result<T> = result::Result<T, Error>;
 
+#[derive(Debug, PartialEq)]
+pub enum Reason {
+    InvalidConf,
+    InvalidSignature,
+    InvalidRepository,
+    InvalidBranch,
+    InvalidPath,
+    MissingHeader,
+    MissingFields,
+    MissingProject,
+    CommandFailed,
+}
+
 #[derive(Debug)]
 pub enum Error {
+    App(Reason, String),
     Ini(String),
+    Mutex(String),
+    Channel(String),
     Hyper(HyperError),
-    Generic(String),
     Utf8(Utf8Error),
     Io(io::Error),
     Hex(FromHexError),
     Json(JsonError),
 }
 
+impl Error {
+    pub fn app<S: Into<String>>(reason: Reason, desc: S) -> Error {
+        App(reason, desc.into())
+    }
+}
+
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
-            Generic(ref s) => &s,
+            App(_, ref s) => &s,
             Ini(ref s) => &s,
+            Mutex(ref s) => &s,
+            Channel(ref s) => &s,
             Hyper(ref err) => err.description(),
             Utf8(ref err) => err.description(),
             Io(ref err) => err.description(),
@@ -87,14 +112,20 @@ impl From<JsonError> for Error {
     }
 }
 
-impl From<String> for Error {
-    fn from(s: String) -> Error {
-        Generic(s)
+impl<T> From<PoisonError<T>> for Error {
+    fn from(err: PoisonError<T>) -> Error {
+        Mutex(format!("{}", err))
     }
 }
 
-impl<'a> From<&'a str> for Error {
-    fn from(s: &'a str) -> Error {
-        Generic(s.to_owned())
+impl<T> From<SendError<T>> for Error {
+    fn from(err: SendError<T>) -> Error {
+        Channel(format!("{}", err))
+    }
+}
+
+impl From<RecvError> for Error {
+    fn from(err: RecvError) -> Error {
+        Channel(err.description().into())
     }
 }

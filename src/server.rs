@@ -12,8 +12,8 @@ use openssl::crypto::memcmp;
 use rustc_serialize::hex::ToHex;
 
 use payload;
-use conf::Projects;
-use error::{Error, Result};
+use conf::{Projects, Project};
+use error::{Reason, Error, Result};
 use header;
 use header::{GithubEvent, HubSignature};
 
@@ -34,17 +34,28 @@ impl WebhookHandler {
         Ok("Pong".to_owned())
     }
 
+    fn get_project(&self, repo: &str) -> Result<&Project> {
+        self.projects
+            .get(repo)
+            .ok_or(Error::app(Reason::MissingProject, "No project found!"))
+    }
+
     fn push(&self, readable: &mut Read, signature: &HubSignature) -> Result<String> {
         // Body
         let bytes = try!(read_bytes(readable));
         let json = try!(payload::bytes_to_json(&bytes));
         let repo = try!(payload::get_repo_name(&json));
+        let branch = try!(payload::get_branch(&json));
 
-        // Conf
-        let key = try!(get_key(&self.projects, repo));
+        // Project
+        let project = try!(self.get_project(repo));
 
         // Verify
-        let _ = try!(verify(&signature, key, &bytes));
+        let _ = try!(verify(&signature, project.key.as_ref(), &bytes));
+        if branch != project.branch {
+            let error_msg = format!("Expected branch {} but got {}", project.branch, branch);
+            return Err(Error::app(Reason::InvalidBranch, error_msg));
+        }
 
         // Trigger
         let _ = try!(self.trigger_hook(repo));
@@ -54,15 +65,10 @@ impl WebhookHandler {
     }
 
     fn trigger_hook(&self, repo: &str) -> Result<()> {
-        let s = try!(self.send.lock().map_err(|_| Error::from("Failed to lock send")));
-        s.send(repo.to_owned()).map_err(|_| Error::from("Failed to send trigger"))
+        let s = try!(self.send.lock());
+        let _ = try!(s.send(repo.to_owned()));
+        Ok(())
     }
-}
-
-fn get_key<'a>(projects: &'a Projects, repo: &str) -> Result<&'a [u8]> {
-    projects.get(repo)
-            .map(|project| project.key.as_ref())
-            .ok_or(Error::from("No key found!"))
 }
 
 fn read_bytes(read: &mut Read) -> Result<Vec<u8>> {
@@ -78,10 +84,10 @@ fn verify(signature: &HubSignature, key: &[u8], content: &[u8]) -> Result<()> {
     if memcmp::eq(&result, &expected_hash) {
         Ok(())
     } else {
-        let msg = format!("Verification failed. Received expected hash {}, but received {}",
+        let msg = format!("Verification failed. Expected hash {}, but received {}",
                           result.to_hex(),
                           expected_hash.to_hex());
-        Err(Error::from(msg))
+        Err(Error::app(Reason::InvalidSignature, msg))
     }
 }
 
@@ -113,7 +119,7 @@ fn handle_result(result: Result<String>,
 fn handle_error(err: Error, mut response: Response, remote_addr: &SocketAddr, uri: &RequestUri) {
     log_error(&err, remote_addr, uri);
     *response.status_mut() = hyper::BadRequest;
-    send_bytes(response, b"Invalid response")
+    send_bytes(response, b"Failed to trigger an update")
 }
 
 fn send_bytes(response: Response, bs: &[u8]) {
@@ -145,17 +151,27 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::mpsc::{channel, Receiver};
     use std::io::Cursor;
+    use std::fmt::Debug;
     use openssl::crypto::hash::Type;
     use rustc_serialize::hex::FromHex;
     use conf::Project;
     use header::HubSignature;
+    use error::{Result, Reason, Error};
 
-    const PAYLOAD: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/koukku\" } }";
+    const PAYLOAD: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/koukku\" }, \
+                                   \"ref\": \"ref/heads/master\" }";
+    const HEX_SHA1: &'static str = "ddcfaf5fd20707cbb5aae68b0cf0904be7de1b7f";
+
     const INVALID_PAYLOAD: &'static str = "{ \"repository\": { \"something\": \
                                            \"Lepovirta/koukku\" } }";
-    const UNKNOWN_REPO: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/lepo\" } }";
-    const HEX_SHA1: &'static str = "0229dcb0888d3a311386c349a1f4ca161f82f5dd";
     const INVALID_HEX_SHA1: &'static str = "364fc28fcf2f50fe5760e7e09e4c5efff04115d4";
+
+    const INVALID_BRANCH: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/koukku\" \
+                                          }, \"ref\": \"ref/heads/other\" }";
+    const INVALID_BRANCH_HEX_SHA1: &'static str = "4b673629d7f6203cc7636d12416808b8b9348146";
+
+    const UNKNOWN_REPO: &'static str = "{ \"repository\": { \"full_name\": \"Lepovirta/lepo\" }, \
+                                        \"ref\": \"ref/heads/master\" }";
     const KEY: &'static str = "foobar";
     const REPO: &'static str = "Lepovirta/koukku";
 
@@ -181,64 +197,78 @@ mod tests {
         }
     }
 
-    fn valid_sig() -> HubSignature {
-        sha1sig(HEX_SHA1)
-    }
-
-    fn invalid_sig() -> HubSignature {
-        sha1sig(INVALID_HEX_SHA1)
-    }
-
     fn cursor_from_str(contents: &str) -> Cursor<Vec<u8>> {
         let payload: Vec<u8> = contents.to_owned().into();
         Cursor::new(payload)
     }
 
+    fn assert_reason<T>(result: &Result<T>, expected_reason: Reason)
+        where T: Debug
+    {
+        match *result {
+            Ok(ref v) => panic!("Expected a failed result, but got success: {:?}", v),
+            Err(Error::App(ref reason, _)) => assert_eq!(reason, &expected_reason),
+            Err(ref e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
     #[test]
     fn correct_everything() {
         let mut cursor = cursor_from_str(PAYLOAD);
-        let sig = valid_sig();
+        let sig = sha1sig(HEX_SHA1);
         let (handler, rx) = setup();
 
         let result = handler.push(&mut cursor, &sig);
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "result = {:?}", result);
         assert_eq!(rx.recv().unwrap(), REPO);
     }
 
     #[test]
     fn incorrect_payload() {
         let mut cursor = cursor_from_str(INVALID_PAYLOAD);
-        let sig = valid_sig();
+        let sig = sha1sig(HEX_SHA1);
         let (handler, rx) = setup();
 
         let result = handler.push(&mut cursor, &sig);
 
-        assert!(result.is_err());
+        assert_reason(&result, Reason::MissingFields);
         assert!(rx.try_recv().is_err());
     }
 
     #[test]
     fn incorrect_signature() {
         let mut cursor = cursor_from_str(PAYLOAD);
-        let sig = invalid_sig();
+        let sig = sha1sig(INVALID_HEX_SHA1);
         let (handler, rx) = setup();
 
         let result = handler.push(&mut cursor, &sig);
 
-        assert!(result.is_err());
+        assert_reason(&result, Reason::InvalidSignature);
         assert!(rx.try_recv().is_err());
     }
 
     #[test]
     fn incorrect_repository() {
         let mut cursor = cursor_from_str(UNKNOWN_REPO);
-        let sig = valid_sig();
+        let sig = sha1sig(HEX_SHA1);
         let (handler, rx) = setup();
 
         let result = handler.push(&mut cursor, &sig);
 
-        assert!(result.is_err());
+        assert_reason(&result, Reason::MissingProject);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn incorrect_branch() {
+        let mut cursor = cursor_from_str(INVALID_BRANCH);
+        let sig = sha1sig(INVALID_BRANCH_HEX_SHA1);
+        let (handler, rx) = setup();
+
+        let result = handler.push(&mut cursor, &sig);
+
+        assert_reason(&result, Reason::InvalidBranch);
         assert!(rx.try_recv().is_err());
     }
 }
