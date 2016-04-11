@@ -1,6 +1,6 @@
 [package]
 name = "koukku"
-version = "0.1.0"
+version = "0.1.1"
 description = "GitHub Webhook server"
 homepage = "https://github.com/Lepovirta/koukku"
 repository = "https://github.com/Lepovirta/koukku.git"
